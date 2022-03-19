@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import { api } from '../../services/api';
 import { Title, Form, Repos, Error } from './styles';
@@ -16,9 +16,18 @@ interface GithubRepository {
 }
 
 export const Dashboard: React.FC = () => {
-  const [repos, setRepos] = useState<GithubRepository[]>([]);
+  const [repos, setRepos] = useState<GithubRepository[]>(() => {
+    const storageRepos = localStorage.getItem('@GitCollections:repositories');
+    if (storageRepos) {
+      return JSON.parse(storageRepos);
+    }
+  });
   const [newRepo, setNewRepo] = useState('');
   const [inputError, setInputError] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem('@GitCollections:repositories', JSON.stringify(repos));
+  }, [repos]);
 
   const handleInputChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) =>
