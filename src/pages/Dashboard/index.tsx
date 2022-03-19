@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api } from '../../services/api';
 import { Title, Form, Repos, Error } from './styles';
 import { FiChevronRight } from 'react-icons/fi';
 
 import logo from '../../assets/logo.svg';
+import { Link } from 'react-router-dom';
 
 interface GithubRepository {
   full_name: string;
@@ -24,6 +25,7 @@ export const Dashboard: React.FC = () => {
   });
   const [newRepo, setNewRepo] = useState('');
   const [inputError, setInputError] = useState('');
+  const formEl = useRef<HTMLFormElement | null>(null);
 
   useEffect(() => {
     localStorage.setItem('@GitCollections:repositories', JSON.stringify(repos));
@@ -39,23 +41,33 @@ export const Dashboard: React.FC = () => {
     event: React.FormEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
-    if (!inputError) {
+    if (!newRepo) {
       setInputError('Informe o username/repositório');
       return;
     }
-    const response = await api.get<GithubRepository>(`repos/${newRepo}`);
 
-    const repository = response.data;
+    try {
+      const response = await api.get<GithubRepository>(`repos/${newRepo}`);
 
-    setRepos([...repos, repository]);
-    setNewRepo('');
+      const repository = response.data;
+
+      setRepos([...repos, repository]);
+      formEl.current?.reset();
+      setNewRepo('');
+    } catch (error) {
+      setInputError('Repositório não encontrado no Github');
+    }
   }
   return (
     <>
       <img src={logo} alt="GitCollection" />
       <Title>Catálogos de repositórios do GitHub</Title>
 
-      <Form hasError={Boolean(inputError)} onSubmit={handleAddRepo}>
+      <Form
+        ref={formEl}
+        hasError={Boolean(inputError)}
+        onSubmit={handleAddRepo}
+      >
         <input
           placeholder="username/repository_name"
           onChange={handleInputChange}
@@ -64,8 +76,11 @@ export const Dashboard: React.FC = () => {
       </Form>
       {inputError && <Error>{inputError}</Error>}
       <Repos>
-        {repos.map(repository => (
-          <a href="/repositories" key={repository.full_name}>
+        {repos.map((repository, index) => (
+          <Link
+            key={repository.full_name + index}
+            to={`repositories/${repository.full_name}`}
+          >
             <img
               src={repository.owner.avatar_url}
               alt={repository.owner.login}
@@ -75,7 +90,7 @@ export const Dashboard: React.FC = () => {
               <p>{repository.description}</p>
             </div>
             <FiChevronRight />
-          </a>
+          </Link>
         ))}
       </Repos>
     </>
